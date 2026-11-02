@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard TTBBM - Eramarindo Corp</title>
+  <!-- Bootstrap 5 CSS & Chart.js -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --primary-navy: #1A365D;
+      --secondary-blue: #2B6CB0;
+      --bg-light: #F7FAFC;
+    }
+    body {
+      background-color: var(--bg-light);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    /* Login Box */
+    .login-container {
+      max-width: 420px;
+      margin: 80px auto;
+      padding: 30px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+    /* Top Tier KPI Cards */
+    .kpi-card {
+      border: none;
+      border-radius: 10px;
+      padding: 20px;
+      color: white;
+      transition: transform 0.2s;
+    }
+    .kpi-card:hover { transform: translateY(-3px); }
+    .kpi-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; }
+    .kpi-value { font-size: 1.8rem; font-weight: bold; margin-top: 5px; }
+    
+    /* Status RAG */
+    .rag-green { background: linear-gradient(135deg, #2E7D32, #4CAF50); }
+    .rag-yellow { background: linear-gradient(135deg, #F57F17, #FBC02D); color: #212121 !important; }
+    .rag-red { background: linear-gradient(135deg, #C62828, #E53935); }
+    .rag-blue { background: linear-gradient(135deg, #1565C0, #1E88E5); }
+
+    /* Cards & Tables */
+    .dashboard-card {
+      background: white;
+      border-radius: 10px;
+      border: 1px solid #E2E8F0;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .navbar-custom { background-color: var(--primary-navy); }
+  </style>
+</head>
+<body>
+
+  <!-- FORM LOGIN -->
+  <div id="loginView" class="container">
+    <div class="login-container text-center">
+      <h3 class="fw-bold text-dark mb-1">ERAMARINDO CORP</h3>
+      <p class="text-muted small mb-4">Platform Storage Tank & Terminal TTBBM</p>
+      <div id="loginAlert" class="alert alert-danger d-none"></div>
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-floating mb-3 text-start">
+          <input type="text" class="form-control" id="username" placeholder="Username" required>
+          <label for="username">Username</label>
+        </div>
+        <div class="form-floating mb-3 text-start">
+          <input type="password" class="form-control" id="password" placeholder="Password" required>
+          <label for="password">Password</label>
+        </div>
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" style="background-color: var(--secondary-blue);">
+          <i class="bi bi-box-arrow-in-right me-1"></i> Masuk ke Dashboard
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- DASHBOARD MAIN VIEW -->
+  <div id="dashboardView" class="d-none">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom px-4">
+      <a class="navbar-brand fw-bold" href="#"><i class="bi bi-fuel-pump-fill me-2"></i>TTBBM ERAMARINDO DASHBOARD</a>
+      <div class="ms-auto d-flex align-items-center text-white">
+        <span class="me-3" id="userDisplayName"><i class="bi bi-person-circle me-1"></i> User</span>
+        <button class="btn btn-outline-light btn-sm" onclick="logout()"><i class="bi bi-power"></i> Keluar</button>
+      </div>
+    </nav>
+
+    <div class="container-fluid px-4 py-4">
+      
+      <!-- FILTER DINAMIS -->
+      <div class="dashboard-card py-3">
+        <div class="row g-3 align-items-center">
+          <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted mb-1">PERIODE WAKTU</label>
+            <select class="form-select form-select-sm" id="filterPeriode" onchange="applyFilters()">
+              <option value="ALL">Semua Periode</option>
+              <option value="Jan 2026">Januari 2026</option>
+              <option value="Feb 2026">Februari 2026</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted mb-1">KATEGORI BIAYA</label>
+            <select class="form-select form-select-sm" id="filterKategori" onchange="applyFilters()">
+              <option value="ALL">Semua Kategori</option>
+              <option value="Biaya Langsung">Biaya Langsung</option>
+              <option value="Biaya Tidak Langsung">Biaya Tidak Langsung</option>
+              <option value="Vendor">Vendor</option>
+              <option value="SDM">SDM</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-bold text-muted mb-1">TAHAPAN PROYEK</label>
+            <select class="form-select form-select-sm" id="filterTahapan" onchange="applyFilters()">
+              <option value="ALL">Semua Tahapan</option>
+              <option value="Perencanaan">Perencanaan</option>
+              <option value="Eksekusi">Eksekusi</option>
+              <option value="Penutupan">Penutupan</option>
+            </select>
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <button class="btn btn-secondary btn-sm w-100" onclick="resetFilters()"><i class="bi bi-arrow-counterclockwise"></i> Reset Filter</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- BARIS TERATAS (TOP TIER): KARTU KPI UTAMA (SEGITIGA TERBALIK) -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="kpi-card rag-blue">
+            <div class="kpi-title">Net Present Value (NPV)</div>
+            <div class="kpi-value" id="kpiNPV">Rp 0 B</div>
+            <small class="d-block mt-1">IRR: <span id="kpiIRR">0%</span></small>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="kpi-card rag-green" id="cardProfit">
+            <div class="kpi-title">Profit Margin</div>
+            <div class="kpi-value" id="kpiProfitMargin">0%</div>
+            <small class="d-block mt-1">Target Margin: > 20%</small>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="kpi-card rag-green" id="cardVariance">
+            <div class="kpi-title">Kesehatan Anggaran</div>
+            <div class="kpi-value" id="kpiBudgetVariance">0%</div>
+            <small class="d-block mt-1" id="kpiVarianceStatus">Hemat / Sesuai Anggaran</small>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="kpi-card rag-blue">
+            <div class="kpi-title">Payback Period</div>
+            <div class="kpi-value" id="kpiPayback">0 Thn</div>
+            <small class="d-block mt-1">Estimasi Pengembalian Modal</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- BARIS KEDUA (MIDDLE TIER): GRAFIK TREN & PERBANDINGAN -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <div class="dashboard-card h-100">
+            <h6 class="fw-bold text-dark mb-3"><i class="bi bi-graph-up me-2"></i>Kurva-S Progres vs Anggaran</h6>
+            <canvas id="chartSCurve"></canvas>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="dashboard-card h-100">
+            <h6 class="fw-bold text-dark mb-3"><i class="bi bi-bar-chart-line me-2"></i>EVM (PV vs AC vs EV)</h6>
+            <canvas id="chartEVM"></canvas>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="dashboard-card h-100">
+            <h6 class="fw-bold text-dark mb-3"><i class="bi bi-cash-stack me-2"></i>Arus Kas Bulanan</h6>
+            <canvas id="chartCashFlow"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- BARIS KETIGA (BOTTOM TIER): TABEL DETAIL & DRILL-DOWN (CRUD) -->
+      <div class="dashboard-card" id="tableSection">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold text-dark mb-0"><i class="bi bi-list-task me-2"></i>Detail Transaksi & Breakdown Rincian Biaya</h6>
+          <button class="btn btn-primary btn-sm" onclick="openModal()"><i class="bi bi-plus-lg me-1"></i> Tambah Transaksi</button>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="table table-hover table-striped align-middle" id="transactionTable">
+            <thead class="table-dark">
+              <tr>
+                <th>ID</th>
+                <th>Tanggal</th>
+                <th>Kategori</th>
+                <th>Tahapan</th>
+                <th>Vendor</th>
+                <th>Deskripsi</th>
+                <th>Jumlah (IDR)</th>
+                <th>Status RAG</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="transactionBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL FORM CREATE / UPDATE TRANSAKSI -->
+  <div class="modal fade" id="transModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title" id="modalTitle">Tambah Transaksi</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="transForm" onsubmit="handleSaveTransaction(event)">
+          <div class="modal-body">
+            <input type="hidden" id="formID">
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Tanggal</label>
+              <input type="date" class="form-control" id="formTanggal" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Kategori Biaya</label>
+              <select class="form-select" id="formKategori" required>
+                <option value="Biaya Langsung">Biaya Langsung</option>
+                <option value="Biaya Tidak Langsung">Biaya Tidak Langsung</option>
+                <option value="Vendor">Vendor</option>
+                <option value="SDM">SDM</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Tahapan Proyek</label>
+              <select class="form-select" id="formTahapan" required>
+                <option value="Perencanaan">Perencanaan</option>
+                <option value="Eksekusi">Eksekusi</option>
+                <option value="Penutupan">Penutupan</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Vendor</label>
+              <input type="text" class="form-control" id="formVendor" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Deskripsi</label>
+              <textarea class="form-control" id="formDeskripsi" rows="2" required></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Jumlah Total (IDR)</label>
+              <input type="number" class="form-control" id="formJumlah" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Status RAG</label>
+              <select class="form-select" id="formRAG" required>
+                <option value="Hijau">Hijau (Aman)</option>
+                <option value="Kuning">Kuning (Perlu Perhatian)</option>
+                <option value="Merah">Merah (Bahaya / Overbudget)</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan Data</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    let globalData = {};
+    let chartSCurveObj, chartEVMObj, chartCashFlowObj;
+    let modalObj;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      modalObj = new bootstrap.Modal(document.getElementById('transModal'));
+    });
+
+    // 1. HANDLER LOGIN
+    function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById('username').value;
+      const p = document.getElementById('password').value;
+
+      google.script.run.withSuccessHandler(function(res) {
+        if (res.success) {
+          document.getElementById('loginView').classList.add('d-none');
+          document.getElementById('dashboardView').classList.remove('d-none');
+          document.getElementById('userDisplayName').innerHTML = `<i class="bi bi-person-circle me-1"></i> ${res.user.name} (${res.user.role})`;
+          loadDashboard();
+        } else {
+          const alert = document.getElementById('loginAlert');
+          alert.innerText = res.message;
+          alert.classList.remove('d-none');
+        }
+      }).checkLogin(u, p);
+    }
+
+    function logout() {
+      document.getElementById('dashboardView').classList.add('d-none');
+      document.getElementById('loginView').classList.remove('d-none');
+      document.getElementById('loginForm').reset();
+    }
+
+    // 2. LOAD DASHBOARD DATA
+    function loadDashboard() {
+      google.script.run.withSuccessHandler(function(data) {
+        globalData = data;
+        renderKPI(data.kpi);
+        renderCharts(data);
+        renderTransactions(data.transactions);
+      }).getDashboardData();
+    }
+
+    // 3. RENDER TOP TIER (KPI)
+    function renderKPI(kpiList) {
+      if (!kpiList || kpiList.length === 0) return;
+      const kpi = kpiList[0];
+
+      document.getElementById('kpiNPV').innerText = 'Rp ' + (kpi.NPV_IDR / 1000000000).toFixed(2) + ' B';
+      document.getElementById('kpiIRR').innerText = kpi.IRR_Percent + '%';
+      document.getElementById('kpiProfitMargin').innerText = kpi.Profit_Margin_Percent + '%';
+      document.getElementById('kpiBudgetVariance').innerText = (kpi.Budget_Variance_Percent > 0 ? '+' : '') + kpi.Budget_Variance_Percent + '%';
+      document.getElementById('kpiPayback').innerText = kpi.Payback_Period_Years + ' Tahun';
+
+      // Lampu Lalu Lintas RAG pada Kartu Anggaran
+      const cardVar = document.getElementById('cardVariance');
+      if (kpi.Budget_Variance_Percent > 5) {
+        cardVar.className = 'kpi-card rag-red';
+        document.getElementById('kpiVarianceStatus').innerText = 'Bahaya: Overbudget';
+      } else if (kpi.Budget_Variance_Percent > 0) {
+        cardVar.className = 'kpi-card rag-yellow';
+        document.getElementById('kpiVarianceStatus').innerText = 'Perhatian: Mendekati Limit';
+      } else {
+        cardVar.className = 'kpi-card rag-green';
+        document.getElementById('kpiVarianceStatus').innerText = 'Aman: Hemat Anggaran';
+      }
+    }
+
+    // 4. RENDER MIDDLE TIER (CHARTS)
+    function renderCharts(data) {
+      // SCurve
+      const labels = data.scurve.map(d => d.Bulan);
+      const sPlan = data.scurve.map(d => d.Progres_Rencana_Pct);
+      const sAct = data.scurve.map(d => d.Progres_Aktual_Pct);
+
+      if (chartSCurveObj) chartSCurveObj.destroy();
+      chartSCurveObj = new Chart(document.getElementById('chartSCurve'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Rencana (%)', data: sPlan, borderColor: '#2B6CB0', fill: false },
+            { label: 'Aktual (%)', data: sAct, borderColor: '#E53935', fill: false }
+          ]
+        }
+      });
+
+      // EVM
+      const evmLabels = data.evm.map(d => d.Bulan);
+      const pv = data.evm.map(d => d.PV_IDR / 1000000000);
+      const ac = data.evm.map(d => d.AC_IDR / 1000000000);
+      const ev = data.evm.map(d => d.EV_IDR / 1000000000);
+
+      if (chartEVMObj) chartEVMObj.destroy();
+      chartEVMObj = new Chart(document.getElementById('chartEVM'), {
+        type: 'bar',
+        data: {
+          labels: evmLabels,
+          datasets: [
+            { label: 'PV (Miliar)', data: pv, backgroundColor: '#1A365D' },
+            { label: 'AC (Miliar)', data: ac, backgroundColor: '#E53935' },
+            { label: 'EV (Miliar)', data: ev, backgroundColor: '#4CAF50' }
+          ]
+        }
+      });
+
+      // CashFlow
+      const cfLabels = data.cashflow.map(d => d.Bulan);
+      const cfIn = data.cashflow.map(d => d.Uang_Masuk / 1000000000);
+      const cfOut = data.cashflow.map(d => d.Uang_Keluar / 1000000000);
+      const cfCum = data.cashflow.map(d => d.Saldo_Kas_Kumulatif / 1000000000);
+
+      if (chartCashFlowObj) chartCashFlowObj.destroy();
+      chartCashFlowObj = new Chart(document.getElementById('chartCashFlow'), {
+        data: {
+          labels: cfLabels,
+          datasets: [
+            { type: 'bar', label: 'Uang Masuk (B)', data: cfIn, backgroundColor: '#4CAF50' },
+            { type: 'bar', label: 'Uang Keluar (B)', data: cfOut, backgroundColor: '#E53935' },
+            { type: 'line', label: 'Saldo Kumulatif (B)', data: cfCum, borderColor: '#1A365D', fill: false }
+          ]
+        }
+      });
+    }
+
+    // 5. RENDER BOTTOM TIER (TABEL & DRILL DOWN)
+    function renderTransactions(list) {
+      const tbody = document.getElementById('transactionBody');
+      tbody.innerHTML = '';
+
+      list.forEach(t => {
+        let ragBadge = '<span class="badge bg-success">Hijau</span>';
+        if (t.Status_RAG === 'Kuning') ragBadge = '<span class="badge bg-warning text-dark">Kuning</span>';
+        if (t.Status_RAG === 'Merah') ragBadge = '<span class="badge bg-danger">Merah</span>';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="fw-bold">${t.ID_Trans}</td>
+          <td>${t.Tanggal ? new Date(t.Tanggal).toLocaleDateString('id-ID') : '-'}</td>
+          <td>${t.Kategori}</td>
+          <td>${t.Tahapan_Proyek}</td>
+          <td class="fw-bold text-primary" style="cursor:pointer;" onclick="drillDownVendor('${t.Vendor}')">${t.Vendor}</td>
+          <td>${t.Deskripsi}</td>
+          <td class="fw-bold">Rp ${Number(t.Jumlah).toLocaleString('id-ID')}</td>
+          <td>${ragBadge}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-warning me-1" onclick="editTransaction('${t.ID_Trans}')"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteTransaction('${t.ID_Trans}')"><i class="bi bi-trash"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // 6. FILTER DINAMIS
+    function applyFilters() {
+      const cat = document.getElementById('filterKategori').value;
+      const stage = document.getElementById('filterTahapan').value;
+
+      let filtered = globalData.transactions;
+      if (cat !== 'ALL') filtered = filtered.filter(t => t.Kategori === cat);
+      if (stage !== 'ALL') filtered = filtered.filter(t => t.Tahapan_Proyek === stage);
+
+      renderTransactions(filtered);
+    }
+
+    function resetFilters() {
+      document.getElementById('filterPeriode').value = 'ALL';
+      document.getElementById('filterKategori').value = 'ALL';
+      document.getElementById('filterTahapan').value = 'ALL';
+      renderTransactions(globalData.transactions);
+    }
+
+    // 7. FITUR DRILL-DOWN VENDOR
+    function drillDownVendor(vendorName) {
+      alert(`[Drill-Down Investigasi]\nVendor: ${vendorName}\nSistem menyaring detail transaksi terkait vendor ini.`);
+      const filtered = globalData.transactions.filter(t => t.Vendor === vendorName);
+      renderTransactions(filtered);
+    }
+
+    // 8. HANDLER CRUD FORM
+    function openModal() {
+      document.getElementById('transForm').reset();
+      document.getElementById('formID').value = '';
+      document.getElementById('modalTitle').innerText = 'Tambah Transaksi Baru';
+      modalObj.show();
+    }
+
+    function editTransaction(id) {
+      const item = globalData.transactions.find(t => t.ID_Trans === id);
+      if (!item) return;
+
+      document.getElementById('formID').value = item.ID_Trans;
+      document.getElementById('formTanggal').value = item.Tanggal ? new Date(item.Tanggal).toISOString().split('T')[0] : '';
+      document.getElementById('formKategori').value = item.Kategori;
+      document.getElementById('formTahapan').value = item.Tahapan_Proyek;
+      document.getElementById('formVendor').value = item.Vendor;
+      document.getElementById('formDeskripsi').value = item.Deskripsi;
+      document.getElementById('formJumlah').value = item.Jumlah;
+      document.getElementById('formRAG').value = item.Status_RAG;
+
+      document.getElementById('modalTitle').innerText = 'Edit Transaksi (' + id + ')';
+      modalObj.show();
+    }
+
+    function handleSaveTransaction(e) {
+      e.preventDefault();
+      const payload = {
+        ID_Trans: document.getElementById('formID').value,
+        Tanggal: document.getElementById('formTanggal').value,
+        Kategori: document.getElementById('formKategori').value,
+        Tahapan_Proyek: document.getElementById('formTahapan').value,
+        Vendor: document.getElementById('formVendor').value,
+        Deskripsi: document.getElementById('formDeskripsi').value,
+        Jumlah: document.getElementById('formJumlah').value,
+        Status_RAG: document.getElementById('formRAG').value
+      };
+
+      google.script.run.withSuccessHandler(function(res) {
+        alert(res.message);
+        modalObj.hide();
+        loadDashboard();
+      }).saveTransaction(payload);
+    }
+
+    function deleteTransaction(id) {
+      if (confirm('Apakah Anda yakin ingin menghapus transaksi ' + id + '?')) {
+        google.script.run.withSuccessHandler(function(res) {
+          alert(res.message);
+          loadDashboard();
+        }).deleteTransaction(id);
+      }
+    }
+  </script>
+</body>
+</html>
